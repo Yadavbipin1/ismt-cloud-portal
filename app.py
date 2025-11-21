@@ -6,18 +6,32 @@ from mysql.connector import Error
 
 app = Flask(__name__)
 
-# --- DATABASE CONFIG ---
+# --- DATABASE CONNECTION & INITIALIZATION ---
 def get_db_connection():
     try:
+        # 1. Connect to the MySQL Server (Without specifying a DB yet)
         conn = mysql.connector.connect(
             host=os.environ.get('DB_HOST'),
             user=os.environ.get('DB_USER'),
-            password=os.environ.get('DB_PASS'),
-            database=os.environ.get('DB_NAME', 'mysql')
+            password=os.environ.get('DB_PASS')
         )
-        return conn
+        
+        if conn.is_connected():
+            cursor = conn.cursor()
+            # 2. Create the specific ISMT database if it doesn't exist
+            # This fixes the "Access Denied" error on the 'mysql' system DB
+            target_db = os.environ.get('DB_NAME', 'ismt_cloud')
+            cursor.execute(f"CREATE DATABASE IF NOT EXISTS {target_db}")
+            
+            # 3. Switch to that database
+            conn.database = target_db
+            cursor.close()
+            return conn
+            
     except Error as e:
+        print(f"Database Error: {e}")
         return None
+
 
 # --- SHARED HTML LAYOUT (Navbar + CSS) ---
 layout = """
